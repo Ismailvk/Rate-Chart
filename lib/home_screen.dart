@@ -471,6 +471,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
 
                 // ── Result count when searching ──
+                //
                 return Column(
                   children: [
                     if (_searchQuery.isNotEmpty)
@@ -661,10 +662,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                           _InfoChip(
                                             icon: Icons.currency_rupee,
                                             label: 'INR Rate',
-                                            value: data['rate']?.toString() ?? '—',
-                                            sublabel: (data['mode'] ?? 'Sea') == 'Air'
-                                                ? 'per kg'
-                                                : 'per container',
+                                            value:
+                                                data['rate']?.toString() ?? '—',
+                                            sublabel:
+                                                (data['mode'] ?? 'Sea') == 'Air'
+                                                    ? 'per kg'
+                                                    : 'per container',
                                           ),
                                           const SizedBox(width: 8),
                                           _InfoChip(
@@ -694,8 +697,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                         color: Colors.white.withOpacity(0.04),
                                         borderRadius: BorderRadius.circular(12),
                                         border: Border.all(
-                                            color: Colors.white
-                                                .withOpacity(0.08)),
+                                            color:
+                                                Colors.white.withOpacity(0.08)),
                                       ),
                                       child: Row(
                                         children: [
@@ -832,8 +835,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               const Icon(
-                                                  Icons
-                                                      .calendar_today_outlined,
+                                                  Icons.calendar_today_outlined,
                                                   color: Color(0xFF93C5FD),
                                                   size: 12),
                                               const SizedBox(width: 5),
@@ -859,10 +861,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                       children: [
                                         _StatusBadge(
                                           label: data['status'] ?? 'Booking',
-                                          color:
-                                              (data['status'] ?? '') == 'Clearing'
-                                                  ? const Color(0xFF16A34A)
-                                                  : const Color(0xFF2563EB),
+                                          color: (data['status'] ?? '') ==
+                                                  'Clearing'
+                                              ? const Color(0xFF16A34A)
+                                              : const Color(0xFF2563EB),
                                           icon: (data['status'] ?? '') ==
                                                   'Clearing'
                                               ? Icons.check_circle_outline
@@ -924,7 +926,10 @@ class _InfoChip extends StatelessWidget {
   final String value;
   final String? sublabel;
   const _InfoChip(
-      {required this.icon, required this.label, required this.value, this.sublabel});
+      {required this.icon,
+      required this.label,
+      required this.value,
+      this.sublabel});
 
   @override
   Widget build(BuildContext context) {
@@ -958,7 +963,7 @@ class _InfoChip extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: Colors.white),
                 overflow: TextOverflow.ellipsis),
-            if (sublabel != null) ...[              
+            if (sublabel != null) ...[
               const SizedBox(height: 2),
               Text(
                 sublabel!,
