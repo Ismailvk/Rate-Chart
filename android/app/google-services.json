@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "904524930257",
+    "project_id": "rate-chart-e3193",
+    "storage_bucket": "rate-chart-e3193.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:904524930257:android:5b3e50a93dc4857cffb9f0",
+        "android_client_info": {
+          "package_name": "com.example.rate_chart"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAVscUF8T9EvNYjl-CMT03d1OoAVVyJlyY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
