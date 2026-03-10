@@ -110,18 +110,29 @@ class _AddBillingScreenState extends State<AddBillingScreen> {
       'effectFrom': _selectedDate!.toIso8601String().split('T').first,
       'status': _status,
       'mode': _mode,
-      'createdAt': FieldValue.serverTimestamp(),
-      // Track which document this was updated from
-      if (_isEditing) 'updatedFromId': widget.docId,
     };
 
     try {
       final col = FirebaseFirestore.instance.collection('billings');
-      // Always add a NEW document — old document is preserved as history
-      await col.add(data);
-      _showSnack(_isEditing
-          ? 'New entry created. Old data kept as history.'
-          : 'Bill added successfully');
+      if (_isEditing) {
+        // Update the existing document
+        await col.doc(widget.docId).update(data);
+        _showSnack('Bill updated successfully');
+      } else {
+        // Create a new document
+        final docRef =
+            await col.add({...data, 'createdAt': FieldValue.serverTimestamp()});
+        // Seed the aedRates sub-collection with the initial rate
+        final aedVal = num.tryParse(_aedRateCtrl.text.trim()) ?? 0;
+        if (aedVal > 0) {
+          await docRef.collection('aedRates').add({
+            'rate': aedVal,
+            'effectiveDate': _selectedDate!.toIso8601String().split('T').first,
+            'addedAt': FieldValue.serverTimestamp(),
+          });
+        }
+        _showSnack('Bill added successfully');
+      }
       if (mounted) Navigator.pop(context);
     } catch (e) {
       _showSnack('Error: $e');

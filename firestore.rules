@@ -1,0 +1,19 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Current app flow has no Firebase Authentication.
+    // Switch `if true` to `if request.auth != null` (or stronger checks)
+    // before production release.
+    match /billings/{billingId} {
+      allow read, write: if true;
+
+      // Used by:
+      // - home_screen.dart (_LiveAedChip)
+      // - billing_detail_screen.dart (AED rate history)
+      // - add_billing_screen.dart and home_screen.dart (add rate)
+      match /aedRates/{rateId} {
+        allow read, write: if true;
+      }
+    }
+  }
+}

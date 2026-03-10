@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'add_billing_screen.dart';
+import 'billing_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -44,7 +46,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (picked != null) {
       setState(() {
         _fromDate = picked;
-        // Reset toDate if it's before fromDate
         if (_toDate != null && _toDate!.isBefore(picked)) _toDate = null;
       });
     }
@@ -86,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final d = DateTime.parse(raw);
       return '${d.day.toString().padLeft(2, '0')}-${d.month.toString().padLeft(2, '0')}-${d.year}';
     } catch (_) {
-      return raw; // fallback: show as-is
+      return raw;
     }
   }
 
@@ -113,6 +114,199 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (_) {
       return false;
     }
+  }
+
+  // ── Add AED Rate bottom sheet ──
+  Future<void> _showAddAedRateDialog(
+      BuildContext context, String docId) async {
+    final rateCtrl = TextEditingController();
+    DateTime selectedDate = DateTime.now();
+    bool saving = false;
+
+    String fmtDate(DateTime d) =>
+        '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0D2045),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 24,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 28,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const Text(
+                'Add AED Rate',
+                style: TextStyle(
+                  fontFamily: 'PlayfairDisplay',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'The old rate will be kept in history',
+                style: TextStyle(
+                    fontFamily: 'Lato', fontSize: 12, color: Colors.white38),
+              ),
+              const SizedBox(height: 20),
+              // AED rate input
+              TextField(
+                controller: rateCtrl,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))
+                ],
+                autofocus: true,
+                style: const TextStyle(
+                    fontFamily: 'Lato', color: Colors.white, fontSize: 16),
+                decoration: InputDecoration(
+                  hintText: 'Enter new AED rate',
+                  hintStyle: const TextStyle(
+                      fontFamily: 'Lato', color: Colors.white38),
+                  prefixIcon: const Icon(Icons.attach_money,
+                      color: Color(0xFFFBBF24), size: 22),
+                  filled: true,
+                  fillColor: const Color(0xFF0A1628),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.white12),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.white12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                        color: Color(0xFFFBBF24), width: 1.5),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              // Date picker row
+              GestureDetector(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: selectedDate,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime(2030),
+                    builder: _datepickerTheme,
+                  );
+                  if (picked != null) setSheet(() => selectedDate = picked);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 13),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0A1628),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_today_outlined,
+                          color: Color(0xFF60A5FA), size: 18),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Effective: ${fmtDate(selectedDate)}',
+                        style: const TextStyle(
+                            fontFamily: 'Lato',
+                            fontSize: 14,
+                            color: Colors.white),
+                      ),
+                      const Spacer(),
+                      const Icon(Icons.keyboard_arrow_down,
+                          color: Colors.white38),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Save button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          final val = rateCtrl.text.trim();
+                          if (val.isEmpty) return;
+                          setSheet(() => saving = true);
+                          try {
+                            await FirebaseFirestore.instance
+                                .collection('billings')
+                                .doc(docId)
+                                .collection('aedRates')
+                                .add({
+                              'rate': num.tryParse(val) ?? 0,
+                              'effectiveDate': selectedDate
+                                  .toIso8601String()
+                                  .split('T')
+                                  .first,
+                              'addedAt': FieldValue.serverTimestamp(),
+                            });
+                            if (ctx.mounted) Navigator.pop(ctx);
+                          } catch (e) {
+                            setSheet(() => saving = false);
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF59E0B),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    elevation: 4,
+                  ),
+                  icon: saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.check_rounded,
+                          color: Colors.white, size: 20),
+                  label: Text(
+                    saving ? 'Saving...' : 'Save Rate',
+                    style: const TextStyle(
+                      fontFamily: 'Lato',
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _deleteBilling(BuildContext context, String docId) async {
@@ -471,7 +665,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
 
                 // ── Result count when searching ──
-                //
                 return Column(
                   children: [
                     if (_searchQuery.isNotEmpty)
@@ -506,383 +699,362 @@ class _HomeScreenState extends State<HomeScreen> {
                             final doc = docs[index];
                             final data = doc.data() as Map<String, dynamic>;
 
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    const Color(0xFF0D2045),
-                                    const Color(0xFF0F2D6B).withOpacity(0.7),
-                                  ],
+                            return GestureDetector(
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => BillingDetailScreen(
+                                      docId: doc.id, data: data),
                                 ),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                    color: const Color(0xFF2563EB)
-                                        .withOpacity(0.2)),
                               ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // ── Header row ──
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: Row(
-                                            children: [
-                                              Flexible(
-                                                child: Text(
-                                                  data['partyName'] ?? '—',
-                                                  style: const TextStyle(
-                                                    fontFamily:
-                                                        'PlayfairDisplay',
-                                                    fontSize: 18,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Colors.white,
-                                                  ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      const Color(0xFF0D2045),
+                                      const Color(0xFF0F2D6B).withOpacity(0.7),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                      color: const Color(0xFF2563EB)
+                                          .withOpacity(0.2)),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // ── Header row ──
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              data['partyName'] ?? '—',
+                                              style: const TextStyle(
+                                                fontFamily: 'PlayfairDisplay',
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.white,
                                               ),
-                                              if (data['updatedFromId'] !=
-                                                  null) ...[
-                                                const SizedBox(width: 8),
-                                                Container(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 7,
-                                                      vertical: 3),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          Row(
+                                            children: [
+                                              GestureDetector(
+                                                onTap: () => Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (_) =>
+                                                        AddBillingScreen(
+                                                      docId: doc.id,
+                                                      existingData: data,
+                                                    ),
+                                                  ),
+                                                ),
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets.all(8),
                                                   decoration: BoxDecoration(
-                                                    color:
-                                                        const Color(0xFFF59E0B)
-                                                            .withOpacity(0.15),
+                                                    color: const Color(
+                                                            0xFF2563EB)
+                                                        .withOpacity(0.15),
                                                     borderRadius:
                                                         BorderRadius.circular(
-                                                            20),
-                                                    border: Border.all(
-                                                        color: const Color(
-                                                                0xFFF59E0B)
-                                                            .withOpacity(0.5)),
+                                                            8),
                                                   ),
-                                                  child: const Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      Icon(Icons.update,
-                                                          color:
-                                                              Color(0xFFFBBF24),
-                                                          size: 11),
-                                                      SizedBox(width: 3),
-                                                      Text(
-                                                        'Updated',
-                                                        style: TextStyle(
-                                                          fontFamily: 'Lato',
-                                                          fontSize: 10,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color:
-                                                              Color(0xFFFBBF24),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
+                                                  child: const Icon(
+                                                      Icons.edit_outlined,
+                                                      color: Color(0xFF60A5FA),
+                                                      size: 18),
                                                 ),
-                                              ],
+                                              ),
+                                              const SizedBox(width: 8),
+                                              GestureDetector(
+                                                onTap: () => _deleteBilling(
+                                                    context, doc.id),
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets.all(8),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(
+                                                            0xFFEF4444)
+                                                        .withOpacity(0.12),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            8),
+                                                  ),
+                                                  child: const Icon(
+                                                      Icons.delete_outline,
+                                                      color: Color(0xFFEF4444),
+                                                      size: 18),
+                                                ),
+                                              ),
                                             ],
                                           ),
-                                        ),
-                                        Row(
-                                          children: [
-                                            GestureDetector(
-                                              onTap: () => Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) =>
-                                                      AddBillingScreen(
-                                                    docId: doc.id,
-                                                    existingData: data,
-                                                  ),
-                                                ),
-                                              ),
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.all(8),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFF2563EB)
-                                                      .withOpacity(0.15),
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: const Icon(
-                                                    Icons.edit_outlined,
-                                                    color: Color(0xFF60A5FA),
-                                                    size: 18),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            GestureDetector(
-                                              onTap: () => _deleteBilling(
-                                                  context, doc.id),
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.all(8),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFFEF4444)
-                                                      .withOpacity(0.12),
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: const Icon(
-                                                    Icons.delete_outline,
-                                                    color: Color(0xFFEF4444),
-                                                    size: 18),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-
-                                    const SizedBox(height: 12),
-                                    const Divider(
-                                        color: Colors.white10, height: 1),
-                                    const SizedBox(height: 12),
-
-                                    // ── Rate chips ──
-                                    IntrinsicHeight(
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          _InfoChip(
-                                            icon: Icons.currency_rupee,
-                                            label: 'INR Rate',
-                                            value:
-                                                data['rate']?.toString() ?? '—',
-                                            sublabel:
-                                                (data['mode'] ?? 'Sea') == 'Air'
-                                                    ? 'per kg'
-                                                    : 'per container',
-                                          ),
-                                          const SizedBox(width: 8),
-                                          _InfoChip(
-                                              icon: Icons.attach_money,
-                                              label: 'AED Rate',
-                                              value:
-                                                  data['aedRate']?.toString() ??
-                                                      '—'),
-                                          if (data['feet'] != null) ...[
-                                            const SizedBox(width: 8),
-                                            _InfoChip(
-                                                icon: Icons.straighten,
-                                                label: 'Feet',
-                                                value: data['feet'] ?? '—'),
-                                          ],
                                         ],
                                       ),
-                                    ),
 
-                                    const SizedBox(height: 12),
+                                      const SizedBox(height: 12),
+                                      const Divider(
+                                          color: Colors.white10, height: 1),
+                                      const SizedBox(height: 12),
 
-                                    // ── Route card: Port From → Port To ──
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 12, vertical: 10),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.04),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                            color:
-                                                Colors.white.withOpacity(0.08)),
+                                      // ── Rate chips ──
+                                      IntrinsicHeight(
+                                        child: Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            _InfoChip(
+                                              icon: Icons.currency_rupee,
+                                              label: 'INR Rate',
+                                              value: data['rate']?.toString() ??
+                                                  '—',
+                                              sublabel:
+                                                  (data['mode'] ?? 'Sea') ==
+                                                          'Air'
+                                                      ? 'per kg'
+                                                      : 'per container',
+                                            ),
+                                            const SizedBox(width: 8),
+                                            // ── Live AED chip from sub-collection ──
+                                            _LiveAedChip(
+                                              docId: doc.id,
+                                              fallbackRate:
+                                                  data['aedRate']?.toString() ??
+                                                      '—',
+                                              onAdd: () =>
+                                                  _showAddAedRateDialog(
+                                                      context, doc.id),
+                                            ),
+                                            if (data['feet'] != null) ...[
+                                              const SizedBox(width: 8),
+                                              _InfoChip(
+                                                  icon: Icons.straighten,
+                                                  label: 'Feet',
+                                                  value: data['feet'] ?? '—'),
+                                            ],
+                                          ],
+                                        ),
                                       ),
-                                      child: Row(
-                                        children: [
-                                          // Port From pill
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  children: const [
-                                                    Icon(
-                                                        Icons
-                                                            .flight_takeoff_outlined,
-                                                        color:
-                                                            Color(0xFF60A5FA),
-                                                        size: 12),
-                                                    SizedBox(width: 4),
-                                                    Text('FROM',
-                                                        style: TextStyle(
-                                                          fontFamily: 'Lato',
-                                                          fontSize: 9,
-                                                          fontWeight:
-                                                              FontWeight.w700,
+
+                                      const SizedBox(height: 12),
+
+                                      // ── Route card: Port From → Port To ──
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 10),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              Colors.white.withOpacity(0.04),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                              color: Colors.white
+                                                  .withOpacity(0.08)),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            // Port From pill
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: const [
+                                                      Icon(
+                                                          Icons
+                                                              .flight_takeoff_outlined,
                                                           color:
                                                               Color(0xFF60A5FA),
-                                                          letterSpacing: 1.2,
-                                                        )),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 3),
-                                                Text(
-                                                  data['portFrom'] ?? '—',
-                                                  style: const TextStyle(
-                                                    fontFamily: 'Lato',
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Colors.white,
+                                                          size: 12),
+                                                      SizedBox(width: 4),
+                                                      Text('FROM',
+                                                          style: TextStyle(
+                                                            fontFamily: 'Lato',
+                                                            fontSize: 9,
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                            color: Color(
+                                                                0xFF60A5FA),
+                                                            letterSpacing: 1.2,
+                                                          )),
+                                                    ],
                                                   ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ],
+                                                  const SizedBox(height: 3),
+                                                  Text(
+                                                    data['portFrom'] ?? '—',
+                                                    style: const TextStyle(
+                                                      fontFamily: 'Lato',
+                                                      fontSize: 13,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: Colors.white,
+                                                    ),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ],
+                                              ),
                                             ),
-                                          ),
 
-                                          // Arrow connector
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 10),
-                                            child: Column(
-                                              children: [
-                                                const Icon(
-                                                    Icons.arrow_forward_rounded,
-                                                    color: Color(0xFF2563EB),
-                                                    size: 16),
-                                                Container(
-                                                  width: 30,
-                                                  height: 1,
-                                                  color: const Color(0xFF2563EB)
-                                                      .withOpacity(0.3),
-                                                ),
-                                              ],
+                                            // Arrow connector
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 10),
+                                              child: Column(
+                                                children: [
+                                                  const Icon(
+                                                      Icons
+                                                          .arrow_forward_rounded,
+                                                      color: Color(0xFF2563EB),
+                                                      size: 16),
+                                                  Container(
+                                                    width: 30,
+                                                    height: 1,
+                                                    color:
+                                                        const Color(0xFF2563EB)
+                                                            .withOpacity(0.3),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
-                                          ),
 
-                                          // Port To pill
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.end,
-                                              children: [
-                                                Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.end,
-                                                  children: const [
-                                                    Text('TO',
-                                                        style: TextStyle(
-                                                          fontFamily: 'Lato',
-                                                          fontSize: 9,
-                                                          fontWeight:
-                                                              FontWeight.w700,
+                                            // Port To pill
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.end,
+                                                children: [
+                                                  Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment.end,
+                                                    children: const [
+                                                      Text('TO',
+                                                          style: TextStyle(
+                                                            fontFamily: 'Lato',
+                                                            fontSize: 9,
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                            color: Color(
+                                                                0xFF34D399),
+                                                            letterSpacing: 1.2,
+                                                          )),
+                                                      SizedBox(width: 4),
+                                                      Icon(
+                                                          Icons
+                                                              .flight_land_outlined,
                                                           color:
                                                               Color(0xFF34D399),
-                                                          letterSpacing: 1.2,
-                                                        )),
-                                                    SizedBox(width: 4),
-                                                    Icon(
-                                                        Icons
-                                                            .flight_land_outlined,
-                                                        color:
-                                                            Color(0xFF34D399),
-                                                        size: 12),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 3),
+                                                          size: 12),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 3),
+                                                  Text(
+                                                    data['portTo'] ?? '—',
+                                                    style: const TextStyle(
+                                                      fontFamily: 'Lato',
+                                                      fontSize: 13,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: Colors.white,
+                                                    ),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    textAlign: TextAlign.end,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
+                                      const SizedBox(height: 8),
+
+                                      // ── Effective Date badge ──
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 5),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF1E40AF)
+                                                  .withOpacity(0.2),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              border: Border.all(
+                                                  color:
+                                                      const Color(0xFF3B82F6)
+                                                          .withOpacity(0.3)),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(
+                                                    Icons
+                                                        .calendar_today_outlined,
+                                                    color: Color(0xFF93C5FD),
+                                                    size: 12),
+                                                const SizedBox(width: 5),
                                                 Text(
-                                                  data['portTo'] ?? '—',
+                                                  'Effective: ${_fmtStored(data['effectFrom']?.toString())}',
                                                   style: const TextStyle(
                                                     fontFamily: 'Lato',
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Colors.white,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Color(0xFF93C5FD),
                                                   ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  textAlign: TextAlign.end,
                                                 ),
                                               ],
                                             ),
                                           ),
                                         ],
                                       ),
-                                    ),
 
-                                    const SizedBox(height: 8),
+                                      const SizedBox(height: 8),
 
-                                    // ── Effective Date badge ──
-                                    Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 10, vertical: 5),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF1E40AF)
-                                                .withOpacity(0.2),
-                                            borderRadius:
-                                                BorderRadius.circular(20),
-                                            border: Border.all(
-                                                color: const Color(0xFF3B82F6)
-                                                    .withOpacity(0.3)),
+                                      // ── Status + Mode badges ──
+                                      Row(
+                                        children: [
+                                          _StatusBadge(
+                                            label: data['status'] ?? 'Booking',
+                                            color:
+                                                (data['status'] ?? '') ==
+                                                        'Clearing'
+                                                    ? const Color(0xFF16A34A)
+                                                    : const Color(0xFF2563EB),
+                                            icon: (data['status'] ?? '') ==
+                                                    'Clearing'
+                                                ? Icons.check_circle_outline
+                                                : Icons
+                                                    .bookmark_added_outlined,
                                           ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(
-                                                  Icons.calendar_today_outlined,
-                                                  color: Color(0xFF93C5FD),
-                                                  size: 12),
-                                              const SizedBox(width: 5),
-                                              Text(
-                                                'Effective: ${_fmtStored(data['effectFrom']?.toString())}',
-                                                style: const TextStyle(
-                                                  fontFamily: 'Lato',
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Color(0xFF93C5FD),
-                                                ),
-                                              ),
-                                            ],
+                                          const SizedBox(width: 8),
+                                          _StatusBadge(
+                                            label: data['mode'] ?? 'Sea',
+                                            color: (data['mode'] ?? '') == 'Air'
+                                                ? const Color(0xFF7C3AED)
+                                                : const Color(0xFF0891B2),
+                                            icon: (data['mode'] ?? '') == 'Air'
+                                                ? Icons.flight_outlined
+                                                : Icons
+                                                    .directions_boat_outlined,
                                           ),
-                                        ),
-                                      ],
-                                    ),
-
-                                    const SizedBox(height: 8),
-
-                                    // ── Status + Mode badges ──
-                                    Row(
-                                      children: [
-                                        _StatusBadge(
-                                          label: data['status'] ?? 'Booking',
-                                          color: (data['status'] ?? '') ==
-                                                  'Clearing'
-                                              ? const Color(0xFF16A34A)
-                                              : const Color(0xFF2563EB),
-                                          icon: (data['status'] ?? '') ==
-                                                  'Clearing'
-                                              ? Icons.check_circle_outline
-                                              : Icons.bookmark_added_outlined,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        _StatusBadge(
-                                          label: data['mode'] ?? 'Sea',
-                                          color: (data['mode'] ?? '') == 'Air'
-                                              ? const Color(0xFF7C3AED)
-                                              : const Color(0xFF0891B2),
-                                          icon: (data['mode'] ?? '') == 'Air'
-                                              ? Icons.flight_outlined
-                                              : Icons.directions_boat_outlined,
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             );
@@ -914,6 +1086,97 @@ class _HomeScreenState extends State<HomeScreen> {
             letterSpacing: 0.5,
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Live AED chip: reads latest rate from sub-collection ──
+class _LiveAedChip extends StatelessWidget {
+  final String docId;
+  final String fallbackRate;
+  final VoidCallback onAdd;
+
+  const _LiveAedChip({
+    required this.docId,
+    required this.fallbackRate,
+    required this.onAdd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('billings')
+            .doc(docId)
+            .collection('aedRates')
+            .orderBy('addedAt', descending: true)
+            .limit(1)
+            .snapshots(),
+        builder: (context, snapshot) {
+          String displayRate = fallbackRate;
+          if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+            final rateDoc =
+                snapshot.data!.docs.first.data() as Map<String, dynamic>;
+            displayRate = rateDoc['rate']?.toString() ?? fallbackRate;
+          }
+
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B).withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10),
+              border:
+                  Border.all(color: const Color(0xFFF59E0B).withOpacity(0.25)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.attach_money,
+                        color: Color(0xFFFBBF24), size: 11),
+                    const SizedBox(width: 3),
+                    const Expanded(
+                      child: Text(
+                        'AED Rate',
+                        style: TextStyle(
+                            fontFamily: 'Lato',
+                            fontSize: 10,
+                            color: Color(0xFFFBBF24)),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    // ── + Add button ──
+                    GestureDetector(
+                      onTap: onAdd,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B).withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Icon(Icons.add,
+                            color: Color(0xFFFBBF24), size: 12),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  displayRate,
+                  style: const TextStyle(
+                      fontFamily: 'Lato',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
