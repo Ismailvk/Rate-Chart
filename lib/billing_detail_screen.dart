@@ -359,6 +359,8 @@ class BillingDetailScreen extends StatelessWidget {
                         isLatest: i == 0,
                         isFirst: i == 0,
                         isLast: i == rateDocs.length - 1,
+                        portFrom: rateData['portFrom']?.toString() ?? '',
+                        portTo: rateData['portTo']?.toString() ?? '',
                       );
                     }),
                   ),
@@ -381,6 +383,8 @@ class _AedRateRow extends StatelessWidget {
   final bool isLatest;
   final bool isFirst;
   final bool isLast;
+  final String portFrom;
+  final String portTo;
 
   const _AedRateRow({
     required this.rate,
@@ -388,10 +392,13 @@ class _AedRateRow extends StatelessWidget {
     required this.isLatest,
     required this.isFirst,
     required this.isLast,
+    this.portFrom = '',
+    this.portTo = '',
   });
 
   @override
   Widget build(BuildContext context) {
+    final hasPort = portFrom.isNotEmpty || portTo.isNotEmpty;
     return Container(
       decoration: BoxDecoration(
         border: isLast
@@ -400,52 +407,106 @@ class _AedRateRow extends StatelessWidget {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Timeline dot
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isLatest
-                      ? const Color(0xFFFBBF24)
-                      : Colors.white24,
-                  border: isLatest
-                      ? Border.all(
-                          color: const Color(0xFFF59E0B), width: 2)
-                      : null,
-                ),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isLatest
+                    ? const Color(0xFFFBBF24)
+                    : Colors.white24,
+                border: isLatest
+                    ? Border.all(
+                        color: const Color(0xFFF59E0B), width: 2)
+                    : null,
               ),
-            ],
+            ),
           ),
           const SizedBox(width: 14),
-          // Rate
+          // Rate + port
           Expanded(
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'AED ',
-                  style: TextStyle(
-                    fontFamily: 'Lato',
-                    fontSize: 11,
-                    color: isLatest
-                        ? const Color(0xFFFBBF24)
-                        : Colors.white38,
-                    fontWeight: FontWeight.w700,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      'AED ',
+                      style: TextStyle(
+                        fontFamily: 'Lato',
+                        fontSize: 11,
+                        color: isLatest
+                            ? const Color(0xFFFBBF24)
+                            : Colors.white38,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      rate,
+                      style: TextStyle(
+                        fontFamily: 'Lato',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: isLatest ? Colors.white : Colors.white60,
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  rate,
-                  style: TextStyle(
-                    fontFamily: 'Lato',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: isLatest ? Colors.white : Colors.white60,
+                // Port route (if stored with this rate)
+                if (hasPort) ...[
+                  const SizedBox(height: 5),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.04),
+                      borderRadius: BorderRadius.circular(8),
+                      border:
+                          Border.all(color: Colors.white.withOpacity(0.08)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.flight_takeoff_outlined,
+                            color: Color(0xFF60A5FA), size: 11),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            portFrom.isNotEmpty ? portFrom : '—',
+                            style: const TextStyle(
+                                fontFamily: 'Lato',
+                                fontSize: 11,
+                                color: Colors.white70),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 5),
+                          child: Icon(Icons.arrow_forward_rounded,
+                              color: Color(0xFF2563EB), size: 11),
+                        ),
+                        const Icon(Icons.flight_land_outlined,
+                            color: Color(0xFF34D399), size: 11),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            portTo.isNotEmpty ? portTo : '—',
+                            style: const TextStyle(
+                                fontFamily: 'Lato',
+                                fontSize: 11,
+                                color: Colors.white70),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

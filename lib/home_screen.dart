@@ -118,13 +118,45 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ── Add AED Rate bottom sheet ──
   Future<void> _showAddAedRateDialog(
-      BuildContext context, String docId) async {
+    BuildContext context,
+    String docId, {
+    String portFrom = '',
+    String portTo = '',
+    String currentRate = '',
+  }) async {
     final rateCtrl = TextEditingController();
+    final portFromCtrl = TextEditingController(text: portFrom);
+    final portToCtrl = TextEditingController(text: portTo);
     DateTime selectedDate = DateTime.now();
     bool saving = false;
 
     String fmtDate(DateTime d) =>
         '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
+    InputDecoration _portDecoration(
+            String hint, IconData icon, Color iconColor) =>
+        InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(
+              fontFamily: 'Lato', color: Colors.white38, fontSize: 13),
+          prefixIcon: Icon(icon, color: iconColor, size: 17),
+          filled: true,
+          fillColor: const Color(0xFF0A1628),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Colors.white12),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Colors.white12),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+          ),
+        );
 
     await showModalBottomSheet(
       context: context,
@@ -172,7 +204,99 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(
                     fontFamily: 'Lato', fontSize: 12, color: Colors.white38),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+
+              // ── Port fields (editable) ──
+              Row(
+                children: [
+                  const Icon(Icons.route_outlined,
+                      color: Color(0xFF60A5FA), size: 14),
+                  const SizedBox(width: 6),
+                  const Text(
+                    'PORT',
+                    style: TextStyle(
+                      fontFamily: 'Lato',
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF60A5FA),
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: portFromCtrl,
+                      style: const TextStyle(
+                          fontFamily: 'Lato',
+                          color: Colors.white,
+                          fontSize: 13),
+                      decoration: _portDecoration(
+                          'Port From',
+                          Icons.flight_takeoff_outlined,
+                          const Color(0xFF60A5FA)),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Icon(Icons.arrow_forward_rounded,
+                        color: Color(0xFF2563EB), size: 16),
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: portToCtrl,
+                      style: const TextStyle(
+                          fontFamily: 'Lato',
+                          color: Colors.white,
+                          fontSize: 13),
+                      decoration: _portDecoration('Port To',
+                          Icons.flight_land_outlined, const Color(0xFF34D399)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // ── Current AED rate info ──
+              if (currentRate.isNotEmpty && currentRate != '—') ...[
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withOpacity(0.07),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: const Color(0xFFF59E0B).withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.attach_money,
+                          color: Color(0xFFFBBF24), size: 16),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Latest AED Rate: ',
+                        style: TextStyle(
+                            fontFamily: 'Lato',
+                            fontSize: 12,
+                            color: Colors.white60),
+                      ),
+                      Text(
+                        currentRate,
+                        style: const TextStyle(
+                            fontFamily: 'Lato',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFFBBF24)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+
               // AED rate input
               TextField(
                 controller: rateCtrl,
@@ -202,8 +326,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                        color: Color(0xFFFBBF24), width: 1.5),
+                    borderSide:
+                        const BorderSide(color: Color(0xFFFBBF24), width: 1.5),
                   ),
                 ),
               ),
@@ -221,8 +345,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (picked != null) setSheet(() => selectedDate = picked);
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 13),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
                   decoration: BoxDecoration(
                     color: const Color(0xFF0A1628),
                     borderRadius: BorderRadius.circular(12),
@@ -259,6 +383,18 @@ class _HomeScreenState extends State<HomeScreen> {
                           if (val.isEmpty) return;
                           setSheet(() => saving = true);
                           try {
+                            final newPortFrom = portFromCtrl.text.trim();
+                            final newPortTo = portToCtrl.text.trim();
+                            // Update billing document's port fields
+                            await FirebaseFirestore.instance
+                                .collection('billings')
+                                .doc(docId)
+                                .update({
+                              if (newPortFrom.isNotEmpty)
+                                'portFrom': newPortFrom,
+                              if (newPortTo.isNotEmpty) 'portTo': newPortTo,
+                            });
+                            // Add to aedRates sub-collection
                             await FirebaseFirestore.instance
                                 .collection('billings')
                                 .doc(docId)
@@ -270,6 +406,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   .split('T')
                                   .first,
                               'addedAt': FieldValue.serverTimestamp(),
+                              if (newPortFrom.isNotEmpty)
+                                'portFrom': newPortFrom,
+                              if (newPortTo.isNotEmpty) 'portTo': newPortTo,
                             });
                             if (ctx.mounted) Navigator.pop(ctx);
                           } catch (e) {
@@ -328,11 +467,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx, true),
-            child: const Text('Delete',
-                style: TextStyle(
-                    color: Color(0xFFEF4444),
-                    fontFamily: 'Lato',
-                    fontWeight: FontWeight.w700)),
+            child: const Text(
+              'Delete',
+              style: TextStyle(
+                  color: Color(0xFFEF4444),
+                  fontFamily: 'Lato',
+                  fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
@@ -763,9 +904,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   padding:
                                                       const EdgeInsets.all(8),
                                                   decoration: BoxDecoration(
-                                                    color: const Color(
-                                                            0xFF2563EB)
-                                                        .withOpacity(0.15),
+                                                    color:
+                                                        const Color(0xFF2563EB)
+                                                            .withOpacity(0.15),
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                             8),
@@ -784,9 +925,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   padding:
                                                       const EdgeInsets.all(8),
                                                   decoration: BoxDecoration(
-                                                    color: const Color(
-                                                            0xFFEF4444)
-                                                        .withOpacity(0.12),
+                                                    color:
+                                                        const Color(0xFFEF4444)
+                                                            .withOpacity(0.12),
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                             8),
@@ -831,9 +972,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                               fallbackRate:
                                                   data['aedRate']?.toString() ??
                                                       '—',
-                                              onAdd: () =>
+                                              onAdd: (String liveRate) =>
                                                   _showAddAedRateDialog(
-                                                      context, doc.id),
+                                                context,
+                                                doc.id,
+                                                portFrom: data['portFrom']
+                                                        ?.toString() ??
+                                                    '',
+                                                portTo: data['portTo']
+                                                        ?.toString() ??
+                                                    '',
+                                                currentRate: liveRate,
+                                              ),
                                             ),
                                             if (data['feet'] != null) ...[
                                               const SizedBox(width: 8),
@@ -853,8 +1003,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 12, vertical: 10),
                                         decoration: BoxDecoration(
-                                          color:
-                                              Colors.white.withOpacity(0.04),
+                                          color: Colors.white.withOpacity(0.04),
                                           borderRadius:
                                               BorderRadius.circular(12),
                                           border: Border.all(
@@ -994,9 +1143,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                               borderRadius:
                                                   BorderRadius.circular(20),
                                               border: Border.all(
-                                                  color:
-                                                      const Color(0xFF3B82F6)
-                                                          .withOpacity(0.3)),
+                                                  color: const Color(0xFF3B82F6)
+                                                      .withOpacity(0.3)),
                                             ),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.min,
@@ -1029,16 +1177,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                         children: [
                                           _StatusBadge(
                                             label: data['status'] ?? 'Booking',
-                                            color:
-                                                (data['status'] ?? '') ==
-                                                        'Clearing'
-                                                    ? const Color(0xFF16A34A)
-                                                    : const Color(0xFF2563EB),
+                                            color: (data['status'] ?? '') ==
+                                                    'Clearing'
+                                                ? const Color(0xFF16A34A)
+                                                : const Color(0xFF2563EB),
                                             icon: (data['status'] ?? '') ==
                                                     'Clearing'
                                                 ? Icons.check_circle_outline
-                                                : Icons
-                                                    .bookmark_added_outlined,
+                                                : Icons.bookmark_added_outlined,
                                           ),
                                           const SizedBox(width: 8),
                                           _StatusBadge(
@@ -1095,7 +1241,7 @@ class _HomeScreenState extends State<HomeScreen> {
 class _LiveAedChip extends StatelessWidget {
   final String docId;
   final String fallbackRate;
-  final VoidCallback onAdd;
+  final void Function(String liveRate) onAdd;
 
   const _LiveAedChip({
     required this.docId,
@@ -1123,7 +1269,7 @@ class _LiveAedChip extends StatelessWidget {
           }
 
           return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
               color: const Color(0xFFF59E0B).withOpacity(0.08),
               borderRadius: BorderRadius.circular(10),
@@ -1148,22 +1294,39 @@ class _LiveAedChip extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    // ── + Add button ──
+                    // ── + Add button (bigger) ──
                     GestureDetector(
-                      onTap: onAdd,
+                      onTap: () => onAdd(displayRate),
                       child: Container(
-                        padding: const EdgeInsets.all(2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF59E0B).withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(4),
+                          color: const Color(0xFFF59E0B).withOpacity(0.25),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                              color: const Color(0xFFF59E0B).withOpacity(0.5)),
                         ),
-                        child: const Icon(Icons.add,
-                            color: Color(0xFFFBBF24), size: 12),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.add, color: Color(0xFFFBBF24), size: 14),
+                            SizedBox(width: 3),
+                            Text(
+                              'Add',
+                              style: TextStyle(
+                                fontFamily: 'Lato',
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFFFBBF24),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
                   displayRate,
                   style: const TextStyle(

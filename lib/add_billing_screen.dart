@@ -49,7 +49,28 @@ class _AddBillingScreenState extends State<AddBillingScreen> {
           _selectedDate = DateTime.parse(d['effectFrom']);
         } catch (_) {}
       }
+      // Override AED rate with the latest sub-collection value (if any)
+      _fetchLatestAedRate();
     }
+  }
+
+  Future<void> _fetchLatestAedRate() async {
+    if (widget.docId == null) return;
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('billings')
+          .doc(widget.docId)
+          .collection('aedRates')
+          .orderBy('addedAt', descending: true)
+          .limit(1)
+          .get();
+      if (snap.docs.isNotEmpty && mounted) {
+        final rate = snap.docs.first.data()['rate']?.toString() ?? '';
+        if (rate.isNotEmpty) {
+          setState(() => _aedRateCtrl.text = rate);
+        }
+      }
+    } catch (_) {}
   }
 
   @override
@@ -115,20 +136,34 @@ class _AddBillingScreenState extends State<AddBillingScreen> {
     try {
       final col = FirebaseFirestore.instance.collection('billings');
       if (_isEditing) {
-        // Update the existing document
+        // Update the existing document fields
         await col.doc(widget.docId).update(data);
+        // Also add a new entry to aedRates sub-collection so history reflects change
+        final aedVal = num.tryParse(_aedRateCtrl.text.trim()) ?? 0;
+        if (aedVal > 0) {
+          await col.doc(widget.docId).collection('aedRates').add({
+            'rate': aedVal,
+            'effectiveDate': _selectedDate!.toIso8601String().split('T').first,
+            'addedAt': FieldValue.serverTimestamp(),
+            'portFrom': _portFromCtrl.text.trim(),
+            'portTo': _portToCtrl.text.trim(),
+          });
+        }
         _showSnack('Bill updated successfully');
+
       } else {
         // Create a new document
         final docRef =
             await col.add({...data, 'createdAt': FieldValue.serverTimestamp()});
-        // Seed the aedRates sub-collection with the initial rate
+        // Seed the aedRates sub-collection with the initial rate + port
         final aedVal = num.tryParse(_aedRateCtrl.text.trim()) ?? 0;
         if (aedVal > 0) {
           await docRef.collection('aedRates').add({
             'rate': aedVal,
             'effectiveDate': _selectedDate!.toIso8601String().split('T').first,
             'addedAt': FieldValue.serverTimestamp(),
+            'portFrom': _portFromCtrl.text.trim(),
+            'portTo': _portToCtrl.text.trim(),
           });
         }
         _showSnack('Bill added successfully');
@@ -458,6 +493,7 @@ class _AddBillingScreenState extends State<AddBillingScreen> {
               // ── Rate (AED) ──
               _SectionLabel(label: 'Rate (AED — Dubai)'),
               const SizedBox(height: 8),
+
               _buildTextField(
                 controller: _aedRateCtrl,
                 hint: 'Enter rate in UAE Dirham',
