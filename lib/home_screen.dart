@@ -127,6 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final rateCtrl = TextEditingController();
     final portFromCtrl = TextEditingController(text: portFrom);
     final portToCtrl = TextEditingController(text: portTo);
+    final remarksCtrl = TextEditingController();
     DateTime selectedDate = DateTime.now();
     bool saving = false;
 
@@ -371,6 +372,67 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 12),
+
+              // ── Remarks (optional) ──
+              Row(
+                children: const [
+                  Icon(Icons.notes_outlined,
+                      color: Color(0xFF60A5FA), size: 14),
+                  SizedBox(width: 6),
+                  Text(
+                    'REMARKS',
+                    style: TextStyle(
+                      fontFamily: 'Lato',
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF60A5FA),
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  SizedBox(width: 6),
+                  Text(
+                    '(optional)',
+                    style: TextStyle(
+                      fontFamily: 'Lato',
+                      fontSize: 10,
+                      color: Colors.white38,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: remarksCtrl,
+                maxLines: 2,
+                minLines: 2,
+                style: const TextStyle(
+                    fontFamily: 'Lato', color: Colors.white, fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: 'Add a note about this rate…',
+                  hintStyle: const TextStyle(
+                      fontFamily: 'Lato',
+                      color: Colors.white38,
+                      fontSize: 13),
+                  filled: true,
+                  fillColor: const Color(0xFF0A1628),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.white12),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.white12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(
+                        color: Color(0xFF2563EB), width: 1.5),
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
               // Save button
               SizedBox(
@@ -409,6 +471,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               if (newPortFrom.isNotEmpty)
                                 'portFrom': newPortFrom,
                               if (newPortTo.isNotEmpty) 'portTo': newPortTo,
+                              if (remarksCtrl.text.trim().isNotEmpty)
+                                'remarks': remarksCtrl.text.trim(),
                             });
                             if (ctx.mounted) Navigator.pop(ctx);
                           } catch (e) {

@@ -20,6 +20,7 @@ class _AddBillingScreenState extends State<AddBillingScreen> {
   final _portToCtrl = TextEditingController();
   final _rateCtrl = TextEditingController();
   final _aedRateCtrl = TextEditingController();
+  final _remarksCtrl = TextEditingController();
 
   String? _selectedFeet;
   DateTime? _selectedDate;
@@ -41,6 +42,7 @@ class _AddBillingScreenState extends State<AddBillingScreen> {
       _portToCtrl.text = d['portTo'] ?? '';
       _rateCtrl.text = d['rate']?.toString() ?? '';
       _aedRateCtrl.text = d['aedRate']?.toString() ?? '';
+      _remarksCtrl.text = d['remarks'] ?? '';
       _selectedFeet = d['feet'];
       _status = d['status'] ?? 'Clearing';
       _mode = d['mode'] ?? 'Sea';
@@ -80,6 +82,7 @@ class _AddBillingScreenState extends State<AddBillingScreen> {
     _portToCtrl.dispose();
     _rateCtrl.dispose();
     _aedRateCtrl.dispose();
+    _remarksCtrl.dispose();
     super.dispose();
   }
 
@@ -121,6 +124,7 @@ class _AddBillingScreenState extends State<AddBillingScreen> {
 
     setState(() => _isLoading = true);
 
+    final remarks = _remarksCtrl.text.trim();
     final data = {
       'partyName': _partyNameCtrl.text.trim(),
       'portFrom': _portFromCtrl.text.trim(),
@@ -131,6 +135,7 @@ class _AddBillingScreenState extends State<AddBillingScreen> {
       'effectFrom': _selectedDate!.toIso8601String().split('T').first,
       'status': _status,
       'mode': _mode,
+      'remarks': remarks,
     };
 
     try {
@@ -147,6 +152,7 @@ class _AddBillingScreenState extends State<AddBillingScreen> {
             'addedAt': FieldValue.serverTimestamp(),
             'portFrom': _portFromCtrl.text.trim(),
             'portTo': _portToCtrl.text.trim(),
+            if (remarks.isNotEmpty) 'remarks': remarks,
           });
         }
         _showSnack('Bill updated successfully');
@@ -164,6 +170,7 @@ class _AddBillingScreenState extends State<AddBillingScreen> {
             'addedAt': FieldValue.serverTimestamp(),
             'portFrom': _portFromCtrl.text.trim(),
             'portTo': _portToCtrl.text.trim(),
+            if (remarks.isNotEmpty) 'remarks': remarks,
           });
         }
         _showSnack('Bill added successfully');
@@ -505,6 +512,44 @@ class _AddBillingScreenState extends State<AddBillingScreen> {
                 ],
                 validator: (v) =>
                     v == null || v.isEmpty ? 'AED Rate is required' : null,
+              ),
+
+              const SizedBox(height: 16),
+
+              // ── Remarks (optional) ──
+              _SectionLabel(label: 'Remarks (Optional)'),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _remarksCtrl,
+                maxLines: 3,
+                minLines: 2,
+                style: const TextStyle(
+                    fontFamily: 'Lato', color: Colors.white, fontSize: 15),
+                decoration: InputDecoration(
+                  hintText: 'Add a note about this AED rate…',
+                  hintStyle:
+                      const TextStyle(fontFamily: 'Lato', color: Colors.white38),
+                  prefixIcon: const Padding(
+                    padding: EdgeInsets.only(bottom: 36),
+                    child: Icon(Icons.notes_outlined,
+                        color: Color(0xFF60A5FA), size: 20),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFF0D2045),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.white12),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.white12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+                  ),
+                ),
               ),
 
               const SizedBox(height: 20),
