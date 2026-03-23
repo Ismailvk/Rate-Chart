@@ -27,13 +27,15 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
     }
   }
 
-  // ── Edit Remarks bottom sheet ──
-  Future<void> _showEditRemarksSheet(
+  // ── Edit AED Entry bottom sheet (rate + remarks) ──
+  Future<void> _showEditAedEntrySheet(
     BuildContext context, {
     required String aedDocId,
+    required String currentRate,
     required String currentRemarks,
   }) async {
-    final ctrl = TextEditingController(text: currentRemarks);
+    final rateCtrl = TextEditingController(text: currentRate);
+    final remarksCtrl = TextEditingController(text: currentRemarks);
     bool saving = false;
 
     await showModalBottomSheet(
@@ -68,7 +70,7 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
                 ),
               ),
               const Text(
-                'Edit Remarks',
+                'Edit AED Rate Entry',
                 style: TextStyle(
                   fontFamily: 'PlayfairDisplay',
                   fontSize: 18,
@@ -78,19 +80,103 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
               ),
               const SizedBox(height: 4),
               const Text(
-                'Update the note for this AED rate entry',
+                'Update rate and/or remarks for this entry',
                 style: TextStyle(
                   fontFamily: 'Lato',
                   fontSize: 12,
                   color: Colors.white38,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
+
+              // ── AED Rate field ──
+              Row(
+                children: const [
+                  Icon(Icons.attach_money,
+                      color: Color(0xFF60A5FA), size: 14),
+                  SizedBox(width: 6),
+                  Text(
+                    'AED RATE',
+                    style: TextStyle(
+                      fontFamily: 'Lato',
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF60A5FA),
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
               TextField(
-                controller: ctrl,
-                maxLines: 4,
-                minLines: 3,
+                controller: rateCtrl,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 autofocus: true,
+                style: const TextStyle(
+                    fontFamily: 'Lato',
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700),
+                decoration: InputDecoration(
+                  hintText: 'Enter AED rate…',
+                  hintStyle: const TextStyle(
+                      fontFamily: 'Lato', color: Colors.white38),
+                  prefixIcon: const Icon(Icons.currency_exchange,
+                      color: Color(0xFF60A5FA), size: 18),
+                  filled: true,
+                  fillColor: const Color(0xFF0A1628),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.white12),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.white12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                        color: Color(0xFF2563EB), width: 1.5),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // ── Remarks field ──
+              Row(
+                children: const [
+                  Icon(Icons.notes_outlined,
+                      color: Color(0xFF60A5FA), size: 14),
+                  SizedBox(width: 6),
+                  Text(
+                    'REMARKS',
+                    style: TextStyle(
+                      fontFamily: 'Lato',
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF60A5FA),
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  SizedBox(width: 6),
+                  Text(
+                    '(optional)',
+                    style: TextStyle(
+                      fontFamily: 'Lato',
+                      fontSize: 10,
+                      color: Colors.white38,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: remarksCtrl,
+                maxLines: 3,
+                minLines: 2,
                 style: const TextStyle(
                     fontFamily: 'Lato', color: Colors.white, fontSize: 15),
                 decoration: InputDecoration(
@@ -111,29 +197,50 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                        const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+                    borderSide: const BorderSide(
+                        color: Color(0xFF2563EB), width: 1.5),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: saving
                       ? null
                       : () async {
+                          final newRate =
+                              num.tryParse(rateCtrl.text.trim());
+                          if (newRate == null || newRate <= 0) return;
                           setSheet(() => saving = true);
                           try {
-                            await FirebaseFirestore.instance
+                            final batch =
+                                FirebaseFirestore.instance.batch();
+
+                            // Update sub-collection entry
+                            final aedRef = FirebaseFirestore.instance
                                 .collection('billings')
                                 .doc(widget.docId)
                                 .collection('aedRates')
-                                .doc(aedDocId)
-                                .update({
-                              'remarks': ctrl.text.trim(),
+                                .doc(aedDocId);
+                            batch.update(aedRef, {
+                              'rate': newRate,
+                              'remarks': remarksCtrl.text.trim(),
                               'addedAt': FieldValue.serverTimestamp(),
                             });
+
+                            // Also update parent billing doc so
+                            // home screen & detail header reflect new rate
+                            final billingRef = FirebaseFirestore.instance
+                                .collection('billings')
+                                .doc(widget.docId);
+                            batch.update(billingRef, {
+                              'aedRate': newRate,
+                              'remarks': remarksCtrl.text.trim(),
+                            });
+
+                            await batch.commit();
                             if (ctx.mounted) Navigator.pop(ctx);
                           } catch (_) {
                             setSheet(() => saving = false);
@@ -154,7 +261,7 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
                       : const Icon(Icons.check_rounded,
                           color: Colors.white, size: 20),
                   label: Text(
-                    saving ? 'Saving…' : 'Save Remarks',
+                    saving ? 'Saving…' : 'Save Changes',
                     style: const TextStyle(
                       fontFamily: 'Lato',
                       color: Colors.white,
@@ -491,9 +598,10 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
                       isFirst: true,
                       isLast: true,
                       remarks: widget.data['remarks'] ?? '',
-                      onEditRemarks: (r) => _showEditRemarksSheet(
+                      onEditRemarks: (rate, r) => _showEditAedEntrySheet(
                           context,
                           aedDocId: '',
+                          currentRate: rate,
                           currentRemarks: r),
                     );
                   }
@@ -537,9 +645,10 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
                         portFrom: rateData['portFrom']?.toString() ?? '',
                         portTo: rateData['portTo']?.toString() ?? '',
                         remarks: rateData['remarks']?.toString() ?? '',
-                        onEditRemarks: (r) => _showEditRemarksSheet(
+                        onEditRemarks: (rate, r) => _showEditAedEntrySheet(
                           context,
                           aedDocId: aedDocId,
+                          currentRate: rate,
                           currentRemarks: r,
                         ),
                       );
@@ -568,7 +677,7 @@ class _AedRateRow extends StatefulWidget {
   final String portFrom;
   final String portTo;
   final String remarks;
-  final void Function(String currentRemarks) onEditRemarks;
+  final void Function(String currentRate, String currentRemarks) onEditRemarks;
 
   const _AedRateRow({
     required this.aedDocId,
@@ -610,7 +719,7 @@ class _AedRateRowState extends State<_AedRateRow> {
                     _dragOffset = 0;
                     _revealed = false;
                   });
-                  widget.onEditRemarks(widget.remarks);
+                  widget.onEditRemarks(widget.rate, widget.remarks);
                 },
                 child: Container(
                   width: _revealWidth,
