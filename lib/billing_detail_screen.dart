@@ -33,6 +33,8 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
     required String aedDocId,
     required String currentRate,
     required String currentRemarks,
+    String currentPortFrom = '',
+    String currentPortTo = '',
   }) async {
     final rateCtrl = TextEditingController(text: currentRate);
     final remarksCtrl = TextEditingController(text: currentRemarks);
@@ -80,7 +82,7 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
               ),
               const SizedBox(height: 4),
               const Text(
-                'Update rate and/or remarks for this entry',
+                'Old entry is kept in history — a new entry will be added',
                 style: TextStyle(
                   fontFamily: 'Lato',
                   fontSize: 12,
@@ -218,16 +220,18 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
                             final batch =
                                 FirebaseFirestore.instance.batch();
 
-                            // Update sub-collection entry
-                            final aedRef = FirebaseFirestore.instance
+                            // Add NEW entry — old entry stays untouched in history
+                            final aedCol = FirebaseFirestore.instance
                                 .collection('billings')
                                 .doc(widget.docId)
-                                .collection('aedRates')
-                                .doc(aedDocId);
-                            batch.update(aedRef, {
+                                .collection('aedRates');
+                            batch.set(aedCol.doc(), {
                               'rate': newRate,
                               'remarks': remarksCtrl.text.trim(),
                               'addedAt': FieldValue.serverTimestamp(),
+                              'effectiveDate': DateTime.now().toIso8601String(),
+                              'portFrom': currentPortFrom,
+                              'portTo': currentPortTo,
                             });
 
                             // Also update parent billing doc so
@@ -602,7 +606,9 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
                           context,
                           aedDocId: '',
                           currentRate: rate,
-                          currentRemarks: r),
+                          currentRemarks: r,
+                          currentPortFrom: '',
+                          currentPortTo: ''),
                     );
                   }
                   return Container(
@@ -650,6 +656,8 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
                           aedDocId: aedDocId,
                           currentRate: rate,
                           currentRemarks: r,
+                          currentPortFrom: rateData['portFrom']?.toString() ?? '',
+                          currentPortTo: rateData['portTo']?.toString() ?? '',
                         ),
                       );
                     }),
