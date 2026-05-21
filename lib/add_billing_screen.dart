@@ -156,7 +156,6 @@ class _AddBillingScreenState extends State<AddBillingScreen> {
           });
         }
         _showSnack('Bill updated successfully');
-
       } else {
         // Create a new document
         final docRef =
@@ -382,9 +381,8 @@ class _AddBillingScreenState extends State<AddBillingScreen> {
                           controller: _portFromCtrl,
                           hint: 'e.g. JNPT, Dubai',
                           icon: Icons.flight_takeoff_outlined,
-                          validator: (v) => v == null || v.isEmpty
-                              ? 'Required'
-                              : null,
+                          validator: (v) =>
+                              v == null || v.isEmpty ? 'Required' : null,
                         ),
                       ],
                     ),
@@ -400,9 +398,8 @@ class _AddBillingScreenState extends State<AddBillingScreen> {
                           controller: _portToCtrl,
                           hint: 'e.g. Mundra, Chennai',
                           icon: Icons.flight_land_outlined,
-                          validator: (v) => v == null || v.isEmpty
-                              ? 'Required'
-                              : null,
+                          validator: (v) =>
+                              v == null || v.isEmpty ? 'Required' : null,
                         ),
                       ],
                     ),
@@ -527,8 +524,8 @@ class _AddBillingScreenState extends State<AddBillingScreen> {
                     fontFamily: 'Lato', color: Colors.white, fontSize: 15),
                 decoration: InputDecoration(
                   hintText: 'Add a note about this AED rate…',
-                  hintStyle:
-                      const TextStyle(fontFamily: 'Lato', color: Colors.white38),
+                  hintStyle: const TextStyle(
+                      fontFamily: 'Lato', color: Colors.white38),
                   prefixIcon: const Padding(
                     padding: EdgeInsets.only(bottom: 36),
                     child: Icon(Icons.notes_outlined,
