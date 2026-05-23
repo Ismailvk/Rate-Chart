@@ -94,8 +94,7 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
               // ── AED Rate field ──
               Row(
                 children: const [
-                  Icon(Icons.attach_money,
-                      color: Color(0xFF60A5FA), size: 14),
+                  Icon(Icons.attach_money, color: Color(0xFF60A5FA), size: 14),
                   SizedBox(width: 6),
                   Text(
                     'AED RATE',
@@ -140,8 +139,8 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                        color: Color(0xFF2563EB), width: 1.5),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF2563EB), width: 1.5),
                   ),
                 ),
               ),
@@ -187,8 +186,8 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
                       fontFamily: 'Lato', color: Colors.white38),
                   filled: true,
                   fillColor: const Color(0xFF0A1628),
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 12),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Colors.white12),
@@ -199,8 +198,8 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                        color: Color(0xFF2563EB), width: 1.5),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF2563EB), width: 1.5),
                   ),
                 ),
               ),
@@ -212,13 +211,11 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
                   onPressed: saving
                       ? null
                       : () async {
-                          final newRate =
-                              num.tryParse(rateCtrl.text.trim());
+                          final newRate = num.tryParse(rateCtrl.text.trim());
                           if (newRate == null || newRate <= 0) return;
                           setSheet(() => saving = true);
                           try {
-                            final batch =
-                                FirebaseFirestore.instance.batch();
+                            final batch = FirebaseFirestore.instance.batch();
 
                             // Add NEW entry — old entry stays untouched in history
                             final aedCol = FirebaseFirestore.instance
@@ -310,8 +307,8 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) =>
-                    AddBillingScreen(docId: widget.docId, existingData: widget.data),
+                builder: (_) => AddBillingScreen(
+                    docId: widget.docId, existingData: widget.data),
               ),
             ),
           ),
@@ -337,8 +334,8 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
                   ],
                 ),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                    color: const Color(0xFF2563EB).withOpacity(0.3)),
+                border:
+                    Border.all(color: const Color(0xFF2563EB).withOpacity(0.3)),
               ),
               child: Row(
                 children: [
@@ -402,13 +399,12 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
             _SectionTitle(title: 'Route'),
             const SizedBox(height: 10),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 color: const Color(0xFF0D2045),
                 borderRadius: BorderRadius.circular(14),
-                border:
-                    Border.all(color: const Color(0xFF2563EB).withOpacity(0.15)),
+                border: Border.all(
+                    color: const Color(0xFF2563EB).withOpacity(0.15)),
               ),
               child: Row(
                 children: [
@@ -501,13 +497,12 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
             const SizedBox(height: 10),
             // Effective date badge
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: const Color(0xFF1E40AF).withOpacity(0.15),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: const Color(0xFF3B82F6).withOpacity(0.3)),
+                border:
+                    Border.all(color: const Color(0xFF3B82F6).withOpacity(0.3)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -643,8 +638,7 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
                       return _AedRateRow(
                         aedDocId: aedDocId,
                         rate: rateData['rate']?.toString() ?? '—',
-                        date:
-                            _fmtStored(rateData['effectiveDate']?.toString()),
+                        date: _fmtStored(rateData['effectiveDate']?.toString()),
                         isLatest: i == 0,
                         isFirst: i == 0,
                         isLast: i == rateDocs.length - 1,
@@ -656,7 +650,8 @@ class _BillingDetailScreenState extends State<BillingDetailScreen> {
                           aedDocId: aedDocId,
                           currentRate: rate,
                           currentRemarks: r,
-                          currentPortFrom: rateData['portFrom']?.toString() ?? '',
+                          currentPortFrom:
+                              rateData['portFrom']?.toString() ?? '',
                           currentPortTo: rateData['portTo']?.toString() ?? '',
                         ),
                       );
@@ -788,8 +783,7 @@ class _AedRateRowState extends State<_AedRateRow> {
                   color: const Color(0xFF0D2045),
                   border: widget.isLast
                       ? null
-                      : const Border(
-                          bottom: BorderSide(color: Colors.white10)),
+                      : const Border(bottom: BorderSide(color: Colors.white10)),
                 ),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -940,12 +934,11 @@ class _AedRateRowState extends State<_AedRateRow> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 7, vertical: 2),
                             decoration: BoxDecoration(
-                              color:
-                                  const Color(0xFFFBBF24).withOpacity(0.15),
+                              color: const Color(0xFFFBBF24).withOpacity(0.15),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                  color: const Color(0xFFFBBF24)
-                                      .withOpacity(0.5)),
+                                  color:
+                                      const Color(0xFFFBBF24).withOpacity(0.5)),
                             ),
                             child: const Text(
                               'LATEST',
@@ -1044,12 +1037,14 @@ class _DetailChip extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 4),
-            Text(value,
-                style: const TextStyle(
-                    fontFamily: 'Lato',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white)),
+            Text(
+              value,
+              style: const TextStyle(
+                  fontFamily: 'Lato',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white),
+            ),
             if (sublabel != null) ...[
               const SizedBox(height: 2),
               Text(sublabel!,
